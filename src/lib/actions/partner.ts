@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import type { OpeningHours } from "@/db/schema";
 import { requireSalonAccess, requireUser } from "@/lib/auth";
+import { adminPhones } from "@/lib/roles";
 import { sendNearAlerts } from "@/lib/queue";
 import { appUrl, sendMessage } from "@/lib/notify";
 import { slugify, touchSalon } from "@/lib/salons";
@@ -241,9 +242,8 @@ export async function registerSalon(_prev: ProfileState, formData: FormData): Pr
   if (user.role === "customer") {
     await db.update(schema.users).set({ role: "partner" }).where(eq(schema.users.id, user.id));
   }
-  const admins = await db.select().from(schema.users).where(eq(schema.users.role, "admin"));
-  for (const a of admins) {
-    await sendMessage(a.phone, `Baari admin: new salon "${salon.name}" (${salon.area}) awaits approval. ${appUrl("/admin")}`);
+  for (const phone of adminPhones()) {
+    await sendMessage(phone, `Baari admin: new salon "${salon.name}" (${salon.area}) awaits approval. ${appUrl("/admin")}`);
   }
   redirect(`/partner/${salon.id}/services?welcome=1`);
 }

@@ -7,6 +7,7 @@ import { db, schema } from "@/db";
 import { getUser, requestOtp, startSession, verifyOtp } from "@/lib/auth";
 import { normalizePkPhone } from "@/lib/phone";
 import { LANG_COOKIE } from "@/lib/i18n/server";
+import { landingFor, viewerFor } from "@/lib/roles";
 
 export type LoginState =
   | { step: "phone"; error?: string }
@@ -16,6 +17,12 @@ export type LoginState =
 function safeNext(next: FormDataEntryValue | null) {
   const n = typeof next === "string" ? next : "/";
   return n.startsWith("/") && !n.startsWith("//") ? n : "/";
+}
+
+/** Sends each person to the right place for their role (admin, salon owner or customer). */
+async function landing(user: Awaited<ReturnType<typeof getUser>>, next: string) {
+  const viewer = await viewerFor(user);
+  return viewer ? landingFor(viewer, next) : "/";
 }
 
 export async function loginStep(prev: LoginState, formData: FormData): Promise<LoginState> {
@@ -37,7 +44,7 @@ export async function loginStep(prev: LoginState, formData: FormData): Promise<L
     await startSession(user.id);
     (await cookies()).set(LANG_COOKIE, user.language, { path: "/", maxAge: 365 * 86_400, sameSite: "lax" });
     if (!user.name) return { step: "name", next };
-    redirect(next);
+    redirect(await landing(user, next));
   }
 
   if (prev.step === "name") {
@@ -46,7 +53,7 @@ export async function loginStep(prev: LoginState, formData: FormData): Promise<L
     if (!user) return { step: "phone" };
     if (!name) return { ...prev, error: "Please enter your name." };
     await db.update(schema.users).set({ name }).where(eq(schema.users.id, user.id));
-    redirect(prev.next);
+    redirect(await landing(user, prev.next));
   }
 
   return { step: "phone" };

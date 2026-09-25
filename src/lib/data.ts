@@ -3,12 +3,13 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/db";
 import type { User } from "@/db/schema";
+import { isAdmin } from "./roles";
 
 /** Approved salons are public; pending ones are visible to their owner and admins only. */
 export async function getSalonBySlug(slug: string, viewer: User | null) {
   const [salon] = await db.select().from(schema.salons).where(eq(schema.salons.slug, slug));
   if (!salon) notFound();
-  if (salon.status !== "approved" && viewer?.id !== salon.ownerId && viewer?.role !== "admin") notFound();
+  if (salon.status !== "approved" && viewer?.id !== salon.ownerId && !isAdmin(viewer)) notFound();
   return salon;
 }
 

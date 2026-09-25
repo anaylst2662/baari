@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { and, asc, eq, gte, lt } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireSalonAccess } from "@/lib/auth";
@@ -8,11 +9,13 @@ import { displayPhone } from "@/lib/phone";
 import { updateBooking } from "@/lib/actions/partner";
 import { AutoRefresh, SubmitButton } from "@/components/client";
 import { Empty } from "@/components/ui";
+import { WorkSwitch } from "../work-switch";
 
 export default async function PartnerBookings({ params, searchParams }: PageProps<"/partner/[id]/bookings">) {
   const { id } = await params;
   const sp = await searchParams;
   const { salon } = await requireSalonAccess(Number(id));
+  if (salon.mode === "queue") redirect(`/partner/${salon.id}/queue`);
   const { t, lang } = await getDict();
   const today = localNow().date;
   const date = typeof sp.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : today;
@@ -61,6 +64,7 @@ export default async function PartnerBookings({ params, searchParams }: PageProp
   return (
     <div className="space-y-4">
       <AutoRefresh seconds={30} />
+      <WorkSwitch salonId={salon.id} mode={salon.mode} active="bookings" t={t} />
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {days.map((d) => (
           <Link key={d} href={`?date=${d}`} className={`${d === date ? "chip-active" : "chip"} shrink-0`}>
