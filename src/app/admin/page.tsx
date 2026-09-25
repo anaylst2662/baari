@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { desc, eq, sql } from "drizzle-orm";
-import { db, schema } from "@/db";
+import { db, rowsOf, schema } from "@/db";
 import { requireAdmin } from "@/lib/auth";
 import { getDict } from "@/lib/i18n/server";
 import { formatDate, formatTime } from "@/lib/time";
@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Admin" };
 
 async function stats() {
   const since = sql`now() - interval '30 days'`;
-  const [row] = await db.execute<{
+  type Stats = {
     active_salons: number;
     pending_salons: number;
     bookings: number;
@@ -24,7 +24,8 @@ async function stats() {
     customers: number;
     repeat_customers: number;
     users: number;
-  }>(sql`
+  };
+  const result = await db.execute(sql`
     select
       (select count(*)::int from salons where status = 'approved' and last_active_at > now() - interval '7 days') as active_salons,
       (select count(*)::int from salons where status = 'pending') as pending_salons,
@@ -35,8 +36,8 @@ async function stats() {
       (select count(distinct user_id)::int from bookings where created_at > ${since}) as customers,
       (select count(*)::int from (select user_id from bookings where created_at > now() - interval '60 days' group by user_id having count(*) > 1) r) as repeat_customers,
       (select count(*)::int from users) as users
-  `).then((r) => r.rows);
-  return row;
+  `);
+  return rowsOf<Stats>(result)[0];
 }
 
 export default async function AdminPage() {

@@ -39,7 +39,7 @@ English and Urdu (RTL).
 | Part | Choice |
 | --- | --- |
 | Front end | Next.js 16 (App Router, server actions), React 19, Tailwind CSS 4 |
-| Database | Postgres through Drizzle ORM. Locally it uses embedded **PGlite**, so there is nothing to install |
+| Database | PostgreSQL (Supabase) through Drizzle ORM and postgres.js. Without `DATABASE_URL` it uses embedded **PGlite**, so local testing needs nothing installed |
 | Maps | Leaflet + OpenStreetMap (no API key) |
 | Messaging | WhatsApp Business Cloud API, with every message also recorded in an outbox table |
 | Live updates | Server-rendered pages that refresh every 10–30 s while visible |
@@ -48,7 +48,7 @@ English and Urdu (RTL).
 
 ```bash
 npm install
-npm run db:setup   # apply migrations and seed demo data (wipes the local DB)
+npm run db:setup   # apply migrations and seed demo data (wipes the local test DB)
 npm run dev        # http://localhost:3000
 ```
 
@@ -61,6 +61,9 @@ screen. Demo accounts:
 | Salon owner (owns Ustad Ji Hair Studio and Glow Ladies Salon) | 0300 2222222 |
 | Admin | 0300 0000000 |
 
+With no `DATABASE_URL`, everything runs on a local test database in `.data/`.
+The scripts and the app read `.env` / `.env.local` automatically.
+
 > PGlite is single-process: stop `npm run dev` before running `db:migrate` or `db:seed`.
 
 ### Scripts
@@ -71,21 +74,42 @@ screen. Demo accounts:
 | `npm run lint` / `typecheck` | ESLint / TypeScript |
 | `npm run db:generate` | Create a SQL migration after editing `src/db/schema.ts` |
 | `npm run db:migrate` | Apply migrations |
-| `npm run db:seed` | Reset the database and load demo data (**destructive**) |
+| `npm run db:seed` | Reset the database and load demo data (**destructive**; refuses on a non-empty `DATABASE_URL` database unless you add `-- --force`) |
 
-## Deploying
+## Deploying (Supabase + Vercel)
 
-1. Create a Postgres database (Supabase and Neon both work) and set `DATABASE_URL`.
-2. Set `AUTH_SECRET`, `APP_URL` and `ADMIN_PHONES`, plus `WHATSAPP_TOKEN` and
-   `WHATSAPP_PHONE_NUMBER_ID` for real OTPs and alerts (see `.env.example`).
-   In production, login is refused until messaging is configured, unless you set
-   `DEMO_MODE=true` for a closed pilot.
-3. Run `npm run db:migrate` against that database, then deploy (for example on Vercel).
-4. Schedule `GET /api/cron/reminders` every 10–15 minutes with
-   `Authorization: Bearer $CRON_SECRET` to send booking reminders.
+1. **Supabase:** create a project. For Pakistan, pick the **South Asia (Mumbai)** region,
+   which matches the `bom1` region in `vercel.json`. Under **Connect**, copy the
+   **Transaction pooler** connection string (port 6543) and put your database password into it.
+2. **Create the tables** from your laptop. Put the string in a `.env` file as `DATABASE_URL=…`
+   (see `.env.example`), then run:
+   ```bash
+   npm run db:migrate   # creates the tables and turns on Row Level Security
+   npm run db:seed      # optional: loads demo salons (only runs on an empty database)
+   ```
+   The seed refuses to run when the database already has users, so it can't wipe live data.
+   `npm run db:seed -- --force` overrides that and **deletes everything**.
+3. **Vercel:** import the GitHub repo, then add the variables from `.env.example` under
+   *Settings → Environment Variables*. `DATABASE_URL` and `AUTH_SECRET` are required.
+   You'll also want `ADMIN_PHONES` and the two `WHATSAPP_*` values. Then deploy.
+4. **Booking reminders:** call `GET /api/cron/reminders` every 10–15 minutes with the header
+   `Authorization: Bearer $CRON_SECRET`. Vercel Cron can only do this on the Pro plan
+   (Hobby runs cron jobs once a day). A free scheduler such as cron-job.org also works.
 
-Outside WhatsApp's 24-hour customer-service window, Meta requires pre-approved
-message templates. `src/lib/notify.ts` is the single place to switch to them.
+How the database connection works:
+- The app uses Supabase's Transaction pooler with prepared statements turned off
+  (`prepare: false`), which that pooler requires.
+- Each server instance opens at most 5 connections; change this with `DATABASE_POOL_MAX`.
+- On Vercel, a missing `DATABASE_URL` stops the app with a clear error instead of
+  falling back to the local test database.
+- Every table has Row Level Security turned on, so Supabase's public Data API can't read
+  or change it. The app connects as the table owner, so it isn't affected.
+
+In production, login is refused until WhatsApp is configured, unless you set
+`DEMO_MODE=true` for a closed pilot. That setting shows login codes on screen, so
+anyone could log in as any number: never use it for a public launch. Outside
+WhatsApp's 24-hour customer-service window, Meta requires pre-approved message
+templates. `src/lib/notify.ts` is the single place to switch to them.
 
 ## Project layout
 

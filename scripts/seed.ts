@@ -1,10 +1,13 @@
 /**
  * Seeds demo data for the Islamabad/Rawalpindi pilot areas.
- * WARNING: wipes all existing data. Only run against a development database.
+ * WARNING: wipes all existing data. On a real database (DATABASE_URL) it refuses
+ * to run if data already exists, unless called with --force.
  */
+import "./env";
 import { sql } from "drizzle-orm";
-import { getDb, schema } from "../src/db";
+import { getDb, rowsOf, schema } from "../src/db";
 import type { OpeningHours } from "../src/db/schema";
+import { describeTarget } from "./target";
 
 const db = getDb();
 
@@ -250,7 +253,18 @@ const salons: SeedSalon[] = [
 ];
 
 async function main() {
-  console.log("Resetting tables…");
+  const remote = Boolean(process.env.DATABASE_URL);
+  if (remote && !process.argv.includes("--force")) {
+    const [{ count }] = rowsOf<{ count: number }>(await db.execute(sql`select count(*)::int as count from users`));
+    if (count > 0) {
+      console.error(
+        `${describeTarget()} already has ${count} users. Seeding would DELETE ALL DATA.\n` +
+          "Nothing was changed. If you really want to wipe it, run: npm run db:seed -- --force",
+      );
+      process.exit(1);
+    }
+  }
+  console.log(`Seeding ${describeTarget()} — resetting tables…`);
   await db.execute(sql`
     truncate table notifications, reviews, queue_entries, bookings, staff, services, salons,
       sessions, otp_codes, users restart identity cascade
@@ -259,7 +273,7 @@ async function main() {
   const [admin, partner, customer, customer2, customer3] = await db
     .insert(schema.users)
     .values([
-      { phone: "+923000000000", name: "Baari Admin", role: "admin" },
+      { phone: "+923000000000", name: "Baari Admin", role: remote ? "customer" : "admin" },
       { phone: "+923002222222", name: "Aslam (salon owner)", role: "partner" },
       { phone: "+923001111111", name: "Ali Khan", role: "customer" },
       { phone: "+923003333333", name: "Sana Malik", role: "customer" },
@@ -365,6 +379,7 @@ async function main() {
   console.log(`Seeded ${salons.length} salons.`);
   console.log("Demo logins (OTP code is shown on screen in demo mode):");
   console.log("  customer 0300 1111111 · salon owner 0300 2222222 · admin 0300 0000000");
+  if (remote) console.log("  On this database, admin access comes only from the ADMIN_PHONES setting.");
   process.exit(0);
 }
 

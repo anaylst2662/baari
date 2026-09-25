@@ -17,7 +17,7 @@ function hash(value: string) {
   const secret = process.env.AUTH_SECRET;
   if (!secret && process.env.NODE_ENV === "production") throw new Error("AUTH_SECRET must be set in production");
   return createHash("sha256")
-    .update(`${secret ?? "baari-dev-secret"}:${value}`)
+    .update(`${secret || "baari-dev-secret"}:${value}`)
     .digest("hex");
 }
 

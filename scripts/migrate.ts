@@ -1,12 +1,15 @@
-import { migrate as migratePg } from "drizzle-orm/node-postgres/migrator";
+import "./env";
+import { migrate as migratePostgres } from "drizzle-orm/postgres-js/migrator";
 import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
 import { getDb } from "../src/db";
+import { describeTarget } from "./target";
 
 async function main() {
+  console.log(`Applying migrations to ${describeTarget()}…`);
   const db = getDb();
   if (process.env.DATABASE_URL) {
-    await migratePg(db, { migrationsFolder: "./drizzle" });
+    await migratePostgres(db, { migrationsFolder: "./drizzle" });
   } else {
     await migratePglite(db as unknown as PgliteDatabase, { migrationsFolder: "./drizzle" });
   }
