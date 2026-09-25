@@ -28,7 +28,7 @@ export async function setSalonStatus(formData: FormData) {
       );
     }
   }
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 export async function toggleFeatured(formData: FormData) {
@@ -36,7 +36,7 @@ export async function toggleFeatured(formData: FormData) {
   const id = z.coerce.number().int().parse(formData.get("salonId"));
   const [salon] = await db.select().from(schema.salons).where(eq(schema.salons.id, id));
   if (salon) await db.update(schema.salons).set({ featured: !salon.featured }).where(eq(schema.salons.id, id));
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 export async function toggleReviewHidden(formData: FormData) {
@@ -46,5 +46,5 @@ export async function toggleReviewHidden(formData: FormData) {
   if (!review) return;
   await db.update(schema.reviews).set({ hidden: !review.hidden }).where(eq(schema.reviews.id, id));
   await recomputeRating(review.salonId);
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }

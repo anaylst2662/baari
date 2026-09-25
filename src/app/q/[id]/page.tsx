@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getDict } from "@/lib/i18n/server";
 import { requireUser } from "@/lib/auth";
+import { isAdmin } from "@/lib/roles";
 import { estimateWait, getLiveQueue } from "@/lib/queue";
 import { leaveQueue } from "@/lib/actions/customer";
 import { WaitPill } from "@/components/ui";
@@ -19,7 +20,7 @@ export default async function TicketPage({ params }: PageProps<"/q/[id]">) {
     .innerJoin(schema.salons, eq(schema.salons.id, schema.queueEntries.salonId))
     .leftJoin(schema.services, eq(schema.services.id, schema.queueEntries.serviceId))
     .where(eq(schema.queueEntries.id, Number(id)));
-  if (!row || (row.entry.userId !== user.id && user.role !== "admin")) notFound();
+  if (!row || (row.entry.userId !== user.id && !isAdmin(user))) notFound();
   const { entry, salon } = row;
 
   const active = entry.status === "waiting" || entry.status === "called";

@@ -5,7 +5,22 @@ barbershops, see whether they're open, check prices and live wait times, and the
 **join the queue** or **book an appointment** from home. It's a mobile-first PWA in
 English and Urdu (RTL).
 
-## What's in the MVP
+## Who sees what
+
+Each person gets their own menu at the bottom of the screen, and after logging in lands on their own home page.
+
+| Role | Who | Lands on | Menu |
+| --- | --- | --- | --- |
+| Customer | anyone | Home | Home · Find salons · My bookings · Profile |
+| Salon owner | anyone who owns a salon | their salon dashboard | Dashboard · Queue / Bookings · Services & prices · Salon settings |
+| Admin | phone numbers in `ADMIN_PHONES` | Admin area (dark header, "Admin area" label) | Overview · Salons · Reviews · Messages |
+
+An admin who also owns a salon gets an **Admin / My salon** switch at the top.
+
+**Security**
+- `ADMIN_PHONES` is the only source of admin rights, and it's checked on every request, so removing a number takes effect immediately.
+- Every admin page and admin action checks it on the server. Anyone else gets "page not found", even when typing the address directly.
+- Salon tools check ownership on the server, so an owner can't open or change another owner's salon.
 
 **Customers**
 - Phone-number login with a one-time code (WhatsApp/SMS), no password or email
@@ -16,17 +31,16 @@ English and Urdu (RTL).
 - My bookings: cancel, book again, and rate a completed visit (with an anonymous option)
 - Urdu/English switch, installable as an app, offline fallback page
 
-**Salon partners** (`/partner`)
-- Self-registration (the salon goes live after admin approval)
-- One-tap open/close toggle
-- Queue manager: add walk-ins, call next, done or no-show, remove
-- Booking list by day: accept, decline, complete, no-show
-- Services and prices, staff on duty, profile, hours (including past midnight), map pin and photos
+**Salon owners** (`/partner`)
+- Self-registration from "List your salon" (the salon goes live after admin approval)
+- Dashboard: one-tap open/close, today's numbers, shortcuts
+- Queue: add walk-ins, call next, done or no-show. Bookings: accept, decline, complete, no-show
+- Services and prices; Salon settings (staff on duty, profile, hours, map pin, photos)
 
 **Admin** (`/admin`)
-- Key numbers: active salons, bookings, queue joins, no-show rate, repeat customers
-- Approve or reject salons, set featured listings, hide reviews
-- WhatsApp outbox and recent users
+- Overview: key numbers and salons waiting for approval
+- Salons: approve or reject, feature, open any salon's dashboard for support
+- Reviews: hide or unhide. Messages: the WhatsApp log and recent users with their roles
 
 **Rules from the business plan that the code enforces**
 - Wait estimate = minutes of service ahead ÷ staff on duty, shown as a range

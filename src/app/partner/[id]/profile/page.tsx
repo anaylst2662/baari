@@ -1,11 +1,7 @@
-import { requireSalonAccess } from "@/lib/auth";
-import { getDict } from "@/lib/i18n/server";
-import { updateProfile } from "@/lib/actions/partner";
-import { SalonForm } from "../../salon-form";
+import { redirect } from "next/navigation";
 
-export default async function PartnerProfile({ params }: PageProps<"/partner/[id]/profile">) {
+/** Old address — this page now lives under Salon settings. */
+export default async function Moved({ params }: PageProps<"/partner/[id]/profile">) {
   const { id } = await params;
-  const { salon } = await requireSalonAccess(Number(id));
-  const { t } = await getDict();
-  return <SalonForm salon={salon} action={updateProfile} submitLabel={t.save} />;
+  redirect(`/partner/${id}/settings`);
 }

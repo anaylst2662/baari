@@ -1,11 +1,13 @@
 import "server-only";
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { cache } from "react";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { User } from "@/db/schema";
 import { demoMode, messagingConfigured, sendMessage } from "./notify";
+import { isAdmin } from "./roles";
 
 const SESSION_COOKIE = "baari_session";
 const SESSION_DAYS = 60;
@@ -72,19 +74,10 @@ export async function verifyOtp(phone: string, code: string): Promise<User | nul
   }
   await db.update(schema.otpCodes).set({ usedAt: new Date() }).where(eq(schema.otpCodes.id, otp.id));
 
-  const adminPhones = (process.env.ADMIN_PHONES ?? "").split(",").map((p) => p.trim());
+  // Admin rights are not stored on the account; see isAdmin() in roles.ts.
   let [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone));
   if (!user) {
-    [user] = await db
-      .insert(schema.users)
-      .values({ phone, role: adminPhones.includes(phone) ? "admin" : "customer" })
-      .returning();
-  } else if (adminPhones.includes(phone) && user.role !== "admin") {
-    [user] = await db
-      .update(schema.users)
-      .set({ role: "admin" })
-      .where(eq(schema.users.id, user.id))
-      .returning();
+    [user] = await db.insert(schema.users).values({ phone }).returning();
   }
   return user;
 }
@@ -109,7 +102,8 @@ export async function endSession() {
   jar.delete(SESSION_COOKIE);
 }
 
-export async function getUser(): Promise<User | null> {
+/** Cached per request, so layouts and pages can both call it cheaply. */
+export const getUser = cache(async function getUser(): Promise<User | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const [row] = await db
@@ -118,7 +112,7 @@ export async function getUser(): Promise<User | null> {
     .innerJoin(schema.users, eq(schema.users.id, schema.sessions.userId))
     .where(and(eq(schema.sessions.token, hash(token)), gt(schema.sessions.expiresAt, new Date())));
   return row?.user ?? null;
-}
+});
 
 export async function requireUser(next: string): Promise<User> {
   const user = await getUser();
@@ -126,16 +120,23 @@ export async function requireUser(next: string): Promise<User> {
   return user;
 }
 
+/**
+ * Guards every admin page and admin action. Anyone who is not an admin, including
+ * people who aren't logged in, gets "page not found", so the admin area doesn't
+ * even reveal that it exists.
+ */
 export async function requireAdmin(): Promise<User> {
-  const user = await requireUser("/admin");
-  if (user.role !== "admin") redirect("/");
+  const user = await getUser();
+  if (!user || !isAdmin(user)) notFound();
   return user;
 }
 
 /** Returns the salon if the current user owns it (or is an admin). */
 export async function requireSalonAccess(salonId: number) {
   const user = await requireUser("/partner");
-  const [salon] = await db.select().from(schema.salons).where(eq(schema.salons.id, salonId));
-  if (!salon || (salon.ownerId !== user.id && user.role !== "admin")) redirect("/partner");
+  const [salon] = Number.isInteger(salonId)
+    ? await db.select().from(schema.salons).where(eq(schema.salons.id, salonId))
+    : [];
+  if (!salon || (salon.ownerId !== user.id && !isAdmin(user))) redirect("/partner");
   return { user, salon };
 }
