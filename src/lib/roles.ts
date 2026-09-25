@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { User } from "@/db/schema";
@@ -46,25 +47,30 @@ export type Viewer = {
   salons: Awaited<ReturnType<typeof ownedSalons>>;
 };
 
-export async function viewerFor(user: User | null): Promise<Viewer | null> {
+/** Cached per request, so every layout and page can ask cheaply. */
+export const viewerFor = cache(async (user: User | null): Promise<Viewer | null> => {
   if (!user) return null;
   return { user, admin: isAdmin(user), salons: await ownedSalons(user.id) };
-}
+});
 
-/** Where each person lands after logging in: admins → admin area, owners → their salon, everyone else → home. */
-export function homeFor(viewer: Viewer): string {
-  if (viewer.admin) return "/admin";
-  if (viewer.salons.length > 0) return `/partner/${viewer.salons[0].id}`;
-  return "/";
+/** Which of the three experiences this person may switch to (the avatar menu). */
+export function experiencesFor(viewer: Viewer) {
+  return { customer: true, business: viewer.salons.length > 0, admin: viewer.admin };
 }
 
 /**
- * Honours a `next` link from before login (e.g. "book this salon") when the person
- * is allowed there; otherwise sends them to their role's home page.
+ * Where to go after logging in:
+ * - admins go to /admin, salon owners to /business
+ *   (unless they were already heading somewhere inside their own area);
+ * - customers go back to the page they were on.
  */
 export function landingFor(viewer: Viewer, next: string | undefined): string {
-  const safe = next && next.startsWith("/") && !next.startsWith("//") ? next : undefined;
-  if (!safe || safe === "/") return homeFor(viewer);
-  if (safe.startsWith("/admin") && !viewer.admin) return homeFor(viewer);
+  const safe = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+  const inAdmin = safe === "/admin" || safe.startsWith("/admin/");
+  const inBusiness = safe === "/business" || safe.startsWith("/business/");
+  if (viewer.admin) return inAdmin || inBusiness ? safe : "/admin";
+  if (viewer.salons.length > 0) return inBusiness && safe !== "/business" ? safe : `/business/${viewer.salons[0].id}`;
+  if (inAdmin) return "/";
+  if (inBusiness && !safe.startsWith("/business/join")) return "/business/join";
   return safe;
 }

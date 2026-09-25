@@ -2,9 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Noto_Nastaliq_Urdu } from "next/font/google";
 import { getDict } from "@/lib/i18n/server";
 import { I18nProvider } from "@/lib/i18n/client";
-import { getUser } from "@/lib/auth";
-import { Header, BottomNav, type NavViewer } from "@/components/nav";
-import { viewerFor } from "@/lib/roles";
 import { RegisterSWInner as RegisterSW } from "@/components/client";
 import "./globals.css";
 
@@ -25,24 +22,17 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+/**
+ * The bare frame shared by all three experiences. Each experience adds its own
+ * header and bottom menu in its own layout: (customer)/layout.tsx,
+ * business/layout.tsx and admin/layout.tsx.
+ */
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const [{ lang }, user] = await Promise.all([getDict(), getUser()]);
-  const viewer = await viewerFor(user);
-  // Only what the menus need is sent to the browser.
-  const nav: NavViewer = viewer && {
-    name: viewer.user.name,
-    phone: viewer.user.phone,
-    admin: viewer.admin,
-    salons: viewer.salons.map((s) => ({ id: s.id, name: s.name, mode: s.mode })),
-  };
+  const { lang } = await getDict();
   return (
     <html lang={lang} dir={lang === "ur" ? "rtl" : "ltr"} className={`${geistSans.variable} ${nastaliq.variable} antialiased`}>
       <body className="min-h-dvh">
-        <I18nProvider lang={lang}>
-          <Header viewer={nav} />
-          <main className="mx-auto w-full max-w-3xl px-4 pb-28 pt-4">{children}</main>
-          <BottomNav viewer={nav} />
-        </I18nProvider>
+        <I18nProvider lang={lang}>{children}</I18nProvider>
         <RegisterSW />
       </body>
     </html>

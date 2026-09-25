@@ -100,6 +100,7 @@ const bookingSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   startsAt: z.string().datetime(),
   note: z.string().max(300).optional(),
+  rescheduleId: z.coerce.number().int().positive().optional(),
 });
 
 export type BookingState = { error?: string } | undefined;
@@ -112,11 +113,29 @@ export async function requestBooking(_prev: BookingState, formData: FormData): P
     date: formData.get("date"),
     startsAt: formData.get("startsAt"),
     note: (formData.get("note") as string) || undefined,
+    rescheduleId: formData.get("rescheduleId") || undefined,
   });
   if (!parsed.success) return { error: "Please choose a service, date and time." };
   const input = parsed.data;
   const salon = await loadSalon(input.salonId);
-  const user = await requireUser(`/s/${salon.slug}/book`);
+  const user = await requireUser(`/book/${salon.slug}`);
+
+  // Rescheduling: the old booking must be this customer's, at this salon, and still active.
+  let old: typeof schema.bookings.$inferSelect | undefined;
+  if (input.rescheduleId) {
+    [old] = await db
+      .select()
+      .from(schema.bookings)
+      .where(
+        and(
+          eq(schema.bookings.id, input.rescheduleId),
+          eq(schema.bookings.userId, user.id),
+          eq(schema.bookings.salonId, salon.id),
+          inArray(schema.bookings.status, ["pending", "confirmed"]),
+        ),
+      );
+    if (!old) return { error: "That booking can no longer be changed." };
+  }
   if (salon.mode === "queue") return { error: "This salon only takes walk-ins." };
 
   const [{ noShows }] = await db
@@ -151,17 +170,22 @@ export async function requestBooking(_prev: BookingState, formData: FormData): P
     })
     .returning();
 
+  if (old) {
+    await db.update(schema.bookings).set({ status: "cancelled" }).where(eq(schema.bookings.id, old.id));
+  }
+
   const when = `${formatDate(startsAt)} ${formatTime(startsAt)}`;
+  const moved = old ? ` (moved from ${formatDate(old.startsAt)} ${formatTime(old.startsAt)})` : "";
   await sendMessage(
     user.phone,
-    `Baari: your request for ${svc.name} at ${salon.name} on ${when} was sent. We'll message you when the salon confirms.`,
+    `Baari: your request for ${svc.name} at ${salon.name} on ${when}${moved} was sent. We'll message you when the salon confirms.`,
   );
   if (salon.ownerId) {
     const [owner] = await db.select().from(schema.users).where(eq(schema.users.id, salon.ownerId));
     if (owner) {
       await sendMessage(
         owner.phone,
-        `Baari: new booking request — ${svc.name}, ${when}, from ${user.name ?? user.phone}. Accept: ${appUrl("/partner/bookings")}`,
+        `Baari: ${old ? "booking change" : "new booking request"} — ${svc.name}, ${when}${moved}, from ${user.name ?? user.phone}. Open Baari Business: ${appUrl(`/business/${salon.id}/bookings`)}`,
       );
     }
   }
@@ -249,4 +273,18 @@ export async function submitReview(formData: FormData) {
     .onConflictDoNothing();
   await recomputeRating(salonId);
   revalidatePath("/bookings");
+}
+
+/** Heart button: save or un-save a salon. */
+export async function toggleSaved(formData: FormData) {
+  const salonId = Number(formData.get("salonId"));
+  const slug = String(formData.get("slug") ?? "");
+  const user = await requireUser(slug ? `/s/${slug}` : "/profile");
+  const salon = await loadSalon(salonId);
+  const where = and(eq(schema.favorites.userId, user.id), eq(schema.favorites.salonId, salon.id));
+  const [existing] = await db.select().from(schema.favorites).where(where);
+  if (existing) await db.delete(schema.favorites).where(where);
+  else await db.insert(schema.favorites).values({ userId: user.id, salonId: salon.id }).onConflictDoNothing();
+  revalidatePath(`/s/${salon.slug}`);
+  revalidatePath("/profile");
 }

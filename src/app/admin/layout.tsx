@@ -1,10 +1,12 @@
 import { requireAdmin } from "@/lib/auth";
+import { AdminShell } from "@/experiences/admin/shell";
+import { loadShellViewer } from "@/experiences/shared/server";
 
 /**
- * Every admin page is also checked on its own, but this makes sure any new page
- * added under /admin is protected too. Non-admins get "page not found".
+ * Admin — only phone numbers in ADMIN_PHONES. Everyone else gets "page not found".
+ * Every admin page and admin action also checks this on its own.
  */
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   await requireAdmin();
-  return children;
+  return <AdminShell viewer={await loadShellViewer()}>{children}</AdminShell>;
 }

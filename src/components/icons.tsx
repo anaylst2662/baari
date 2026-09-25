@@ -66,3 +66,29 @@ export const ChartIcon = ({ className }: P) => (
 export const MessageIcon = ({ className }: P) => (
   <svg {...base(className)}><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></svg>
 );
+export const SunIcon = ({ className }: P) => (
+  <svg {...base(className)}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+);
+export const MoreIcon = ({ className }: P) => (
+  <svg {...base(className)}><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
+);
+export const HeartIcon = ({ className, filled = false }: P & { filled?: boolean }) => (
+  <svg className={className ?? "h-5 w-5"} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} strokeLinejoin="round" aria-hidden>
+    <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
+  </svg>
+);
+export const HelpIcon = ({ className }: P) => (
+  <svg {...base(className)}><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01" /></svg>
+);
+export const LogoutIcon = ({ className }: P) => (
+  <svg {...base(className)}><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" /></svg>
+);
+export const CameraIcon = ({ className }: P) => (
+  <svg {...base(className)}><path d="M4 7h3l2-3h6l2 3h3v13H4z" /><circle cx="12" cy="13" r="3.5" /></svg>
+);
+export const ClipboardIcon = ({ className }: P) => (
+  <svg {...base(className)}><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4h6v3H9zM9 12h6M9 16h4" /></svg>
+);
+export const BackIcon = ({ className }: P) => (
+  <svg {...base(className)}><path d="M15 6l-6 6 6 6" /></svg>
+);

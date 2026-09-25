@@ -38,7 +38,7 @@ html[lang="ur"] .num {
 }
 
 @utility btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 @utility btn-primary {
@@ -54,11 +54,12 @@ html[lang="ur"] .num {
 }
 
 @utility btn-sm {
-    @apply px-3 py-1.5 text-xs;
+    /* Smaller text, but still a 44px tap target. */
+    @apply min-h-11 px-3 py-1.5 text-xs;
 }
 
 @utility input {
-    @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100;
+    @apply min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100;
 }
 
 @utility label {
@@ -66,7 +67,7 @@ html[lang="ur"] .num {
 }
 
 @utility chip {
-    @apply inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-brand-600;
+    @apply inline-flex min-h-11 items-center gap-1 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-sm text-slate-700 hover:border-brand-600;
 }
 
 @utility chip-active {

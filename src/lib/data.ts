@@ -38,3 +38,21 @@ export async function getReviews(salonId: number, limit = 10) {
     .orderBy(desc(schema.reviews.createdAt))
     .limit(limit);
 }
+
+export async function isSaved(userId: number | undefined, salonId: number) {
+  if (!userId) return false;
+  const [row] = await db
+    .select({ salonId: schema.favorites.salonId })
+    .from(schema.favorites)
+    .where(and(eq(schema.favorites.userId, userId), eq(schema.favorites.salonId, salonId)));
+  return Boolean(row);
+}
+
+export async function getSavedSalons(userId: number) {
+  return db
+    .select({ salon: schema.salons })
+    .from(schema.favorites)
+    .innerJoin(schema.salons, eq(schema.salons.id, schema.favorites.salonId))
+    .where(and(eq(schema.favorites.userId, userId), eq(schema.salons.status, "approved")))
+    .orderBy(desc(schema.favorites.createdAt));
+}

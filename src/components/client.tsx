@@ -72,7 +72,7 @@ export function NearMeButton() {
         next.set("lat", pos.coords.latitude.toFixed(4));
         next.set("lng", pos.coords.longitude.toFixed(4));
         setState("idle");
-        router.push(`${path === "/" ? "/salons" : path}?${next}`);
+        router.push(`${path}?${next}`);
       },
       () => setState("denied"),
       { timeout: 10_000, maximumAge: 300_000 },
