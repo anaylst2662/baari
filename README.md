@@ -5,42 +5,43 @@ barbershops, see whether they're open, check prices and live wait times, and the
 **join the queue** or **book an appointment** from home. It's a mobile-first PWA in
 English and Urdu (RTL).
 
-## Who sees what
+## Three experiences, one login
 
-Each person gets their own menu at the bottom of the screen, and after logging in lands on their own home page.
+The web address decides which experience you see, not the person's role. Each experience has its own header and bottom menu, and they never mix.
 
-| Role | Who | Lands on | Menu |
+| Experience | Addresses | Look | Menu |
 | --- | --- | --- | --- |
-| Customer | anyone | Home | Home · Find salons · My bookings · Profile |
-| Salon owner | anyone who owns a salon | their salon dashboard | Dashboard · Queue / Bookings · Services & prices · Salon settings |
-| Admin | phone numbers in `ADMIN_PHONES` | Admin area (dark header, "Admin area" label) | Overview · Salons · Reviews · Messages |
+| **Baari** (customers) | `/`, `/search`, `/s/…`, `/book/…`, `/bookings`, `/profile` | light teal | Home · Search · Bookings · Profile |
+| **Baari Business** (salon owners) | `/business/…` | dark, "Baari Business" | Today · Bookings · Queue · My Salon |
+| **Admin** (`ADMIN_PHONES` only) | `/admin/…` | navy, "Admin" badge; sidebar on desktop | Overview · Salons · Users · Reviews · More |
 
-An admin who also owns a salon gets an **Admin / My salon** switch at the top.
+- **Switching:** the avatar menu has a **Switch to** list (Customer app / My Salon / Admin). It shows only the experiences a person can use, so normal customers never see it.
+- **After login:** admins go to `/admin` and salon owners to their Business "Today" page. Customers go back to the page they were on.
+- **Guests:** anyone can browse without an account. Login is asked for only when booking, joining a queue or saving a salon.
+- **Old addresses** (`/salons`, `/account`, `/partner/…`, `/s/…/book`) redirect to the new ones (see `next.config.ts`).
 
-**Security**
-- `ADMIN_PHONES` is the only source of admin rights, and it's checked on every request, so removing a number takes effect immediately.
-- Every admin page and admin action checks it on the server. Anyone else gets "page not found", even when typing the address directly.
-- Salon tools check ownership on the server, so an owner can't open or change another owner's salon.
+**Code layout, ready to split into apps later**
+- `src/experiences/customer`, `src/experiences/business` and `src/experiences/admin` hold each experience's header and menus.
+- `src/experiences/shared` holds the avatar menu, bottom and side menus, the step progress bar, and the loading and error screens.
+- Pages live in `src/app/(customer)`, `src/app/business` and `src/app/admin`.
+- All business logic (`src/lib`, `src/lib/actions`) is shared. Future apps can call it the same way.
 
-**Customers**
-- Phone-number login with a one-time code (WhatsApp/SMS), no password or email
-- Nearby salons as a list or map: filter by men/women/unisex, service, max price, area, open now; sort by distance
-- Salon profile: open/closed status, live queue length and estimated wait, services and prices, hours, map, reviews
-- Live queue ticket (position, wait range, auto-refresh) plus WhatsApp "your turn is near" alerts
-- Appointment booking: service, optional stylist, date, free time slot
-- My bookings: cancel, book again, and rate a completed visit (with an anonymous option)
-- Urdu/English switch, installable as an app, offline fallback page
+**Security (checked on the server)**
+- `/admin/*`: only numbers in `ADMIN_PHONES`, re-checked on every request. Everyone else, including guests, gets **404**.
+- `/business/[salon]/*`: only that salon's owner, or an admin (shown a blue "Viewing as admin" banner). Anyone else gets **404**. Every salon action checks the same rule.
+- `/business/join` (signup) is the one Business page open to any logged-in person. It shows no business data.
+- Access checks run before any page content is sent, so blocked pages return a real 404 or a login redirect.
 
-**Salon owners** (`/partner`)
-- Self-registration from "List your salon" (the salon goes live after admin approval)
-- Dashboard: one-tap open/close, today's numbers, shortcuts
-- Queue: add walk-ins, call next, done or no-show. Bookings: accept, decline, complete, no-show
-- Services and prices; Salon settings (staff on duty, profile, hours, map pin, photos)
+**Customers:** home (categories Men/Women/Bridal/Spa, nearby, live queue status, featured), search with price, rating and open-now filters in a list or map, salon pages (photos, prices, stylists, reviews, hours, save ♡), a 4-step booking with a progress bar, bookings (Upcoming/Past, cancel, change time, review), and profile (name, language, saved salons, help, List your salon).
 
-**Admin** (`/admin`)
-- Overview: key numbers and salons waiting for approval
-- Salons: approve or reject, feature, open any salon's dashboard for support
-- Reviews: hide or unhide. Messages: the WhatsApp log and recent users with their roles
+**Salon owners:**
+- **Today:** open/close, today's earnings, appointments, live queue, quick actions.
+- **Bookings:** requests, calendar and list views, accept or decline.
+- **Queue:** walk-ins and "Call next".
+- **My Salon:** services & prices, staff, hours, photos, reviews, details.
+- **Signup:** 4 steps, then a friendly "Waiting for approval" screen.
+
+**Admin:** overview, salons (approve, feature, open any business dashboard), users, reviews, messages, and a settings health check.
 
 **Rules from the business plan that the code enforces**
 - Wait estimate = minutes of service ahead ÷ staff on duty, shown as a range

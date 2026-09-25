@@ -131,12 +131,16 @@ export async function requireAdmin(): Promise<User> {
   return user;
 }
 
-/** Returns the salon if the current user owns it (or is an admin). */
+/**
+ * Guards every Baari Business page and action for one salon. Only that salon's
+ * owner or an admin gets through; not logged in → login page; anyone else gets
+ * "page not found" (so other salons' data is never shown or changed).
+ */
 export async function requireSalonAccess(salonId: number) {
-  const user = await requireUser("/partner");
-  const [salon] = Number.isInteger(salonId)
+  const user = await requireUser(Number.isInteger(salonId) ? `/business/${salonId}` : "/business");
+  const [salon] = Number.isInteger(salonId) && salonId > 0
     ? await db.select().from(schema.salons).where(eq(schema.salons.id, salonId))
     : [];
-  if (!salon || (salon.ownerId !== user.id && !isAdmin(user))) redirect("/partner");
-  return { user, salon };
+  if (!salon || (salon.ownerId !== user.id && !isAdmin(user))) notFound();
+  return { user, salon, viewingAsAdmin: salon.ownerId !== user.id };
 }

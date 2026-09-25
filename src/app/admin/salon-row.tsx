@@ -27,24 +27,24 @@ export function SalonRow({ salon, ownerPhone, t }: { salon: Salon; ownerPhone: s
           <form action={setSalonStatus}>
             <input type="hidden" name="salonId" value={salon.id} />
             <input type="hidden" name="status" value="approved" />
-            <SubmitButton className="btn-primary btn-sm min-h-9">✓ {t.approve}</SubmitButton>
+            <SubmitButton className="btn-primary btn-sm">✓ {t.approve}</SubmitButton>
           </form>
         )}
         {salon.status !== "rejected" && (
           <form action={setSalonStatus}>
             <input type="hidden" name="salonId" value={salon.id} />
             <input type="hidden" name="status" value="rejected" />
-            <SubmitButton className="btn-danger btn-sm min-h-9" confirm={`${t.reject} ${salon.name}?`}>
+            <SubmitButton className="btn-danger btn-sm" confirm={`${t.reject} ${salon.name}?`}>
               {t.reject}
             </SubmitButton>
           </form>
         )}
         <form action={toggleFeatured}>
           <input type="hidden" name="salonId" value={salon.id} />
-          <SubmitButton className={`${salon.featured ? "btn-primary" : "btn-secondary"} btn-sm min-h-9`}>★ {t.featured}</SubmitButton>
+          <SubmitButton className={`${salon.featured ? "btn-primary" : "btn-secondary"} btn-sm`}>★ {t.featured}</SubmitButton>
         </form>
-        <Link href={`/partner/${salon.id}`} className="btn-secondary btn-sm min-h-9">
-          {t.navDashboard} →
+        <Link href={`/business/${salon.id}`} className="btn-secondary btn-sm">
+          {t.openBusinessDashboard} →
         </Link>
       </div>
     </li>

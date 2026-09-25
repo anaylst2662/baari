@@ -266,7 +266,7 @@ async function main() {
   }
   console.log(`Seeding ${describeTarget()} — resetting tables…`);
   await db.execute(sql`
-    truncate table notifications, reviews, queue_entries, bookings, staff, services, salons,
+    truncate table favorites, notifications, reviews, queue_entries, bookings, staff, services, salons,
       sessions, otp_codes, users restart identity cascade
   `);
 

@@ -6,6 +6,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   real,
   serial,
   text,
@@ -192,6 +193,21 @@ export const reviews = pgTable(
     uniqueIndex("reviews_booking_uq").on(t.bookingId),
     uniqueIndex("reviews_queue_uq").on(t.queueEntryId),
   ],
+);
+
+/** Salons a customer has saved (the heart button). */
+export const favorites = pgTable(
+  "favorites",
+  {
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    salonId: integer("salon_id")
+      .notNull()
+      .references(() => salons.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.salonId] })],
 );
 
 /** Outbox of WhatsApp/SMS messages. Delivered by the configured provider, or just logged in demo mode. */

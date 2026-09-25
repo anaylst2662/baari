@@ -17,6 +17,12 @@ export const SERVICE_CATEGORIES = [
   "Bridal",
 ] as const;
 
+/** Home-page categories that cover several service categories. */
+export const CATEGORY_GROUPS = {
+  bridal: ["Bridal", "Makeup"],
+  spa: ["Massage", "Facial", "Mani & Pedi"],
+} as const;
+
 /** Salons that haven't shown activity for this long drop out of search (business-plan risk mitigation). */
 const INACTIVE_DAYS = 30;
 
@@ -38,7 +44,10 @@ export type SalonFilters = {
   q?: string;
   type?: string;
   category?: string;
+  /** Home-page category groups. */
+  group?: "bridal" | "spa";
   maxPrice?: number;
+  minRating?: number;
   openNow?: boolean;
   area?: string;
   lat?: number;
@@ -72,6 +81,16 @@ export async function searchSalons(f: SalonFilters): Promise<SalonCard[]> {
         ilike(schema.salons.city, like),
         sql`exists (select 1 from ${schema.services} s where s.salon_id = "salons"."id" and s.active and (s.name ilike ${like} or s.category ilike ${like}))`,
       )!,
+    );
+  }
+  if (f.minRating) conds.push(sql`${schema.salons.ratingAvg} >= ${f.minRating}`);
+  if (f.group) {
+    const cats = CATEGORY_GROUPS[f.group];
+    conds.push(
+      sql`exists (select 1 from ${schema.services} s where s.salon_id = "salons"."id" and s.active and s.category in (${sql.join(
+        cats.map((c) => sql`${c}`),
+        sql`, `,
+      )}))`,
     );
   }
   if (f.category || f.maxPrice) {
